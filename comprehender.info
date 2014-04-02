@@ -1,5 +1,5 @@
 ; Info file for comprehender.module
 name = Comprehender
 description = Comment validator that requires those wishing to comment to answer a reading comprehension question
-core = 6.x
+core = 7.x
 

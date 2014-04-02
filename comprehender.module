@@ -13,7 +13,6 @@ define('COMPREHENDER_FIELD', 'field_comprehender');
  */
 function comprehender_form_comment_form_alter(&$form, &$form_state) {
   // Try to get the question and answers from the node
-  $form['#node'] = node_load($form['nid']['#value']);
   $c = _comprehender_qa($form['#node']);
   if (!$c) { return; }
 
@@ -22,6 +21,7 @@ function comprehender_form_comment_form_alter(&$form, &$form_state) {
     '#type' => 'radios',
     '#title' => $c['question'],
     '#options' => $c['answers'],
+    '#description' => t("This is a simple check that you're a human, and that you've read the content before commenting!"),
     '#required' => TRUE,
   );
   $form['#comprehender'] = $c;
@@ -49,11 +49,14 @@ function comprehender_comment_form_validate(&$form, &$form_state) {
  */
 function _comprehender_qa($node) {
   if (!$node) { return; }
-  if (!property_exists($node, COMPREHENDER_FIELD)) { return; };
+  $comprehender_items = field_get_items("node", $node, COMPREHENDER_FIELD);
+  if (!$comprehender_items) {
+    return;
+  }
 
   // Split up the pipe-delimited array of:
   // Question? | Answer1 | Answer 2 | ... | Right answer number 1-N
-  $qa = array_map('trim',explode('|', $node->{COMPREHENDER_FIELD}[0]["value"]));
+  $qa = array_map('trim',explode('|', array_pop(array_pop($comprehender_items))));
   $q = array_shift($qa);
   $r = array_pop($qa) - 1;
 
