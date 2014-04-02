@@ -1,0 +1,68 @@
+<?php
+
+/**
+ * @file comprehender.module
+ * Comment validation using reading comprehension
+ */
+
+// CCK field for comprehension quiz
+define('COMPREHENDER_FIELD', 'field_comprehender');
+
+/**
+ * Implementation of hook_form_ID_alter
+ */
+function comprehender_form_comment_form_alter(&$form, &$form_state) {
+  // Try to get the question and answers from the node
+  $form['#node'] = node_load($form['nid']['#value']);
+  $c = _comprehender_qa($form['#node']);
+  if (!$c) { return; }
+
+  // Add the comprehender form field and the parsed array to the form
+  $form['comprehender'] = array(
+    '#type' => 'radios',
+    '#title' => $c['question'],
+    '#options' => $c['answers'],
+    '#required' => TRUE,
+  );
+  $form['#comprehender'] = $c;
+
+  // Add a validator for checking the commenter's answer
+  $form['#validate'][] = 'comprehender_comment_form_validate';
+}
+
+/**
+ * Comment form validation hook
+ *
+ * Checks to see if the commenter has given the right answer to
+ * the reading comprehension question
+ */
+function comprehender_comment_form_validate(&$form, &$form_state) {
+  if ($form_state['values']['comprehender'] != $form['#comprehender']['correct']) {
+    form_set_error('comprehender', t("Sorry, you appear not to have "
+      . "understood the original blogpost. Please read it again and "
+      . "check your answer to the reading comprehension question."));
+  }
+}
+
+/**
+ * Internal function to obtain Q&As from node
+ */
+function _comprehender_qa($node) {
+  if (!$node) { return; }
+  if (!property_exists($node, COMPREHENDER_FIELD)) { return; };
+
+  // Split up the pipe-delimited array of:
+  // Question? | Answer1 | Answer 2 | ... | Right answer number 1-N
+  $qa = array_map('trim',explode('|', $node->{COMPREHENDER_FIELD}[0]["value"]));
+  $q = array_shift($qa);
+  $r = array_pop($qa) - 1;
+
+  // Turn this into a "comprehender" array and return if it's valid
+  if ($q && array_key_exists($r, $qa)) {
+    return array(
+      'question' => $q,
+      'answers' => $qa,
+      'correct' => $r,
+    );
+  }
+}
